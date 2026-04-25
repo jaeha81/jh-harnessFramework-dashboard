@@ -30,6 +30,7 @@ interface TokenResponse {
 
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!;
+const PARENT_FOLDER = "Obsidian Vault";
 const FOLDER_NAME = "JH 하네스 대시보드";
 const SCOPE = "https://www.googleapis.com/auth/drive.file";
 
@@ -72,34 +73,34 @@ async function getAccessToken(): Promise<string> {
         });
   }
 
-async function ensureFolder(token: string): Promise<string> {
-    // 폴더 검색 (fetch 직접 사용, gapi 불필요)
-    const q = encodeURIComponent(
-      `name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
-    );
-    const searchRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const searchData = await searchRes.json() as { files: Array<{ id: string; name: string }> };
-    const files = searchData.files ?? [];
-    if (files.length > 0) return files[0].id;
+async function findOrCreateFolder(token: string, name: string, parentId?: string): Promise<string> {
+  const parentClause = parentId ? ` and '${parentId}' in parents` : " and 'root' in parents";
+  const q = encodeURIComponent(
+    `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false${parentClause}`
+  );
+  const searchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const searchData = await searchRes.json() as { files: Array<{ id: string; name: string }> };
+  const files = searchData.files ?? [];
+  if (files.length > 0) return files[0].id;
 
-    // 폴더 생성
-    const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: FOLDER_NAME,
-        mimeType: "application/vnd.google-apps.folder",
-      }),
-    });
-    const folder = await createRes.json() as { id: string };
-    return folder.id;
-  }
+  const body: Record<string, unknown> = { name, mimeType: "application/vnd.google-apps.folder" };
+  if (parentId) body.parents = [parentId];
+  const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const folder = await createRes.json() as { id: string };
+  return folder.id;
+}
+
+async function ensureFolder(token: string): Promise<string> {
+  const parentId = await findOrCreateFolder(token, PARENT_FOLDER);
+  return findOrCreateFolder(token, FOLDER_NAME, parentId);
+}
 
 export async function saveToGoogleDrive(
     filename: string,
