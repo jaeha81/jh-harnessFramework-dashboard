@@ -86,7 +86,7 @@ export const useDashboardStore = create<DashboardStore>()(
     }),
     {
       name: "jh-harness-storage",
-      partialObject: (state) => ({ history: state.history }),
+      partialize: (state) => ({ history: state.history }),
     }
   )
 );
