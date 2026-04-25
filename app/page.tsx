@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDashboardStore } from "@/lib/store";
 import { FRAMEWORKS } from "@/lib/framework-data";
 
 export default function HomePage() {
+  const router = useRouter();
   const { history, resetSession } = useDashboardStore();
 
   const handleNewProject = () => {
     resetSession();
+    router.push("/new-project");
   };
 
   return (
@@ -57,39 +60,36 @@ export default function HomePage() {
 
       {/* CTA 버튼 */}
       <div className="flex flex-col gap-2.5 max-w-sm">
-        <Link href="/new-project" onClick={handleNewProject}>
-          <button className="w-full bg-white text-black font-bold text-[14px] px-5 py-4 flex justify-between items-center hover:bg-gray-100 transition-colors">
-            새 개발 착수 시작 <span>→</span>
-          </button>
+        <button
+          onClick={handleNewProject}
+          className="w-full bg-white text-black font-bold text-[14px] px-5 py-4 flex justify-between items-center hover:bg-gray-100 transition-colors"
+        >
+          새 개발 착수 시작 <span>→</span>
+        </button>
+        <Link
+          href="/frameworks"
+          className="w-full text-[13px] px-5 py-3.5 flex justify-between items-center transition-colors hover:border-[#333]"
+          style={{
+            background: "transparent",
+            border: "1px solid #222",
+            color: "#ccc",
+          }}
+        >
+          프레임워크 상세 보기{" "}
+          <span style={{ color: "#444" }}>→</span>
         </Link>
-        <Link href="/frameworks">
-          <button
+        {history.length > 0 && (
+          <Link
+            href="/history"
             className="w-full text-[13px] px-5 py-3.5 flex justify-between items-center transition-colors hover:border-[#333]"
             style={{
               background: "transparent",
               border: "1px solid #222",
               color: "#ccc",
-              cursor: "pointer",
             }}
           >
-            프레임워크 상세 보기{" "}
+            이전 기록 ({history.length}){" "}
             <span style={{ color: "#444" }}>→</span>
-          </button>
-        </Link>
-        {history.length > 0 && (
-          <Link href="/history">
-            <button
-              className="w-full text-[13px] px-5 py-3.5 flex justify-between items-center transition-colors hover:border-[#333]"
-              style={{
-                background: "transparent",
-                border: "1px solid #222",
-                color: "#ccc",
-                cursor: "pointer",
-              }}
-            >
-              이전 기록 ({history.length}){" "}
-              <span style={{ color: "#444" }}>→</span>
-            </button>
           </Link>
         )}
       </div>
