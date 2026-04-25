@@ -6,6 +6,7 @@ import { useDashboardStore } from "@/lib/store";
 import { StepBar } from "@/components/StepBar";
 import { CopyButton } from "@/components/CopyButton";
 import { GoogleDriveButton } from "@/components/GoogleDriveButton";
+import { saveRequestToGoogleDrive } from "@/lib/googleDrive";
 
 type TabId = "prompt" | "codex" | "handoff" | "wiki";
 
@@ -24,10 +25,14 @@ const CodeBlock = ({ content }: { content: string }) => (
   </pre>
 );
 
+type RequestSaveStatus = "idle" | "loading" | "success" | "error";
+
 export default function OutputPage() {
   const router = useRouter();
   const { output, formData, chosenFramework, resetSession } = useDashboardStore();
   const [tab, setTab] = useState<TabId>("prompt");
+  const [reqStatus, setReqStatus] = useState<RequestSaveStatus>("idle");
+  const [reqError, setReqError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!output) router.replace("/new-project");
@@ -87,6 +92,35 @@ export default function OutputPage() {
     a.download = getMdFilename();
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleSaveRequest = async () => {
+    setReqStatus("loading");
+    setReqError(null);
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      const safeTitle = formData.title.replace(/[\\/:*?"<>|]/g, "-").trim() || "착수요청";
+      const filename = `REQ-${date}-${safeTitle}.json`;
+      const payload = {
+        meta: {
+          type: "착수요청",
+          created_at: new Date().toISOString(),
+          framework: chosenFramework,
+        },
+        form: formData,
+        generated: {
+          claude_code_prompt: output.claude_code_prompt,
+          codex_checklist: output.codex_checklist,
+          handoff_prompt: output.handoff_prompt,
+          llm_wiki_entry: output.llm_wiki_entry,
+        },
+      };
+      await saveRequestToGoogleDrive(filename, payload);
+      setReqStatus("success");
+    } catch (e) {
+      setReqError(e instanceof Error ? e.message : "저장 실패");
+      setReqStatus("error");
+    }
   };
 
   return (
@@ -173,6 +207,27 @@ export default function OutputPage() {
           filename={getMdFilename()}
           content={getMdContent()}
         />
+
+        {/* 착수 요청 구조화 저장 */}
+        <button
+          onClick={handleSaveRequest}
+          disabled={reqStatus === "loading" || reqStatus === "success"}
+          className="w-full text-[12px] font-mono py-3 flex items-center justify-center gap-2 transition-all"
+          style={{
+            background: "transparent",
+            border: `1px dashed ${reqStatus === "success" ? "#22c55e" : reqStatus === "error" ? "#ef4444" : "#2a2a2a"}`,
+            color: reqStatus === "success" ? "#22c55e" : reqStatus === "error" ? "#ef4444" : "#666",
+            cursor: reqStatus === "loading" || reqStatus === "success" ? "not-allowed" : "pointer",
+          }}>
+          {reqStatus === "loading" && <span style={{ fontSize:"10px" }}>⏳</span>}
+          {reqStatus === "success" && <span>✓</span>}
+          {reqStatus === "error" && <span>✕</span>}
+          {reqStatus === "idle" && <span style={{ color:"#3b82f6" }}>◈</span>}
+          {reqStatus === "loading" ? "저장 중..." :
+           reqStatus === "success" ? "착수 요청 저장 완료" :
+           reqStatus === "error" ? (reqError ?? "저장 실패") :
+           "착수 요청 Drive 저장 (로컬 Claude용)"}
+        </button>
       </div>
 
       <div className="flex gap-2.5 mt-2.5">

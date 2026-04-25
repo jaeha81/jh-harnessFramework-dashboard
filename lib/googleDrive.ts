@@ -149,6 +149,54 @@ export async function saveToGoogleDrive(
     return file.id as string;
   }
 
+export async function saveRequestToGoogleDrive(
+  filename: string,
+  data: object
+): Promise<string> {
+  const token = await getAccessToken();
+  const folderId = await ensureFolder(token);
+
+  const content = JSON.stringify(data, null, 2);
+  const metadata = {
+    name: filename,
+    mimeType: "application/json",
+    parents: [folderId],
+  };
+
+  const boundary = "jhd_boundary_" + Date.now();
+  const body = [
+    `--${boundary}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    JSON.stringify(metadata),
+    `--${boundary}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    content,
+    `--${boundary}--`,
+  ].join("\r\n");
+
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message ?? "Drive 저장 실패");
+  }
+
+  const file = await res.json();
+  return file.id as string;
+}
+
 export function clearDriveToken() {
     accessToken = null;
     tokenClient = null;
