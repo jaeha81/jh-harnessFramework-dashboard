@@ -41,6 +41,49 @@ export default function OutputPage() {
     router.push("/new-project");
   };
 
+  const downloadMd = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    const safeTitle = formData.title.replace(/[\\/:*?"<>|]/g, "-").trim() || "착수패키지";
+    const filename = `${date}-${safeTitle}.md`;
+
+    const content = [
+      `# ${formData.title} — 착수 패키지`,
+      `> 생성일: ${date} | 프레임워크: ${chosenFramework}`,
+      ``,
+      `---`,
+      ``,
+      `## Claude Code 프롬프트`,
+      ``,
+      output.claude_code_prompt,
+      ``,
+      `---`,
+      ``,
+      `## Codex 체크리스트`,
+      ``,
+      output.codex_checklist.map((i) => `- [ ] ${i}`).join("\n"),
+      ``,
+      `---`,
+      ``,
+      `## Handoff 프롬프트`,
+      ``,
+      output.handoff_prompt,
+      ``,
+      `---`,
+      ``,
+      `## LLM Wiki`,
+      ``,
+      output.llm_wiki_entry,
+    ].join("\n");
+
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
       <StepBar current="output" />
@@ -118,7 +161,16 @@ export default function OutputPage() {
         </div>
       )}
 
-      <div className="flex gap-2.5 mt-7">
+      {/* MD 다운로드 */}
+      <button onClick={downloadMd}
+        className="w-full text-[12px] font-mono py-3 mt-7 flex items-center justify-center gap-2 transition-colors hover:border-[#444]"
+        style={{ background:"transparent", border:"1px dashed #2a2a2a", color:"#666", cursor:"pointer" }}>
+        <span style={{ color:"#22c55e" }}>↓</span>
+        .md 파일 다운로드
+        <span style={{ color:"#333", fontSize:"10px" }}>(Obsidian Vault에 저장 가능)</span>
+      </button>
+
+      <div className="flex gap-2.5 mt-2.5">
         <Link href="/" className="flex-1">
           <button className="w-full text-[12px] py-3.5 transition-colors"
             style={{ background:"transparent", color:"#666", border:"1px solid #222", cursor:"pointer" }}>
