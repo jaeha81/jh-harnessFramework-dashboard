@@ -2,11 +2,6 @@
 export interface ProjectFormData {
   title: string;
   purpose: string;
-  type: ProjectType;
-  scale: ProjectScale;
-  problem: string;
-  desired_output: string;
-  tech_stack: string;
   notes: string;
   needs_test: boolean;
   is_longterm: boolean;
@@ -14,22 +9,9 @@ export interface ProjectFormData {
   needs_security: boolean;
 }
 
-export type ProjectType =
-  | "신규개발"
-  | "기능추가"
-  | "리팩터링"
-  | "버그수정"
-  | "문서정리"
-  | "출시전검토"
-  | "마이그레이션";
-
-export type ProjectScale = "소 (1-2일)" | "중 (1-2주)" | "대 (1개월+)";
-
 // ─── 분석 결과 ────────────────────────────────────────────────
 export interface AnalysisResult {
   purpose_summary: string;
-  task_type: string;
-  scale: "소" | "중" | "대";
   context_risk: RiskLevel;
   test_necessity: RiskLevel;
   ux_necessity: RiskLevel;
@@ -87,6 +69,7 @@ export interface GenerateRequest {
   analysis: AnalysisResult;
   chosenFramework: string;
 }
+
 
 export interface GenerateResponse {
   success: boolean;

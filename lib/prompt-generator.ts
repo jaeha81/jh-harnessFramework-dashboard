@@ -12,7 +12,6 @@ function getInstall(fw: string): string {
   if (matched.length === 1) {
     return `## 프레임워크 설치\n\`\`\`bash\n${matched[0][1]}\n\`\`\`\n`;
   }
-  // 조합 모드: 매칭된 모든 프레임워크 설치 명령 출력
   const installs = matched.length > 0
     ? matched.map(([key, cmd]) => `# ${key}\n${cmd}`).join("\n\n")
     : Object.entries(FW_INSTALL).map(([key, cmd]) => `# ${key}\n${cmd}`).join("\n\n");
@@ -29,7 +28,6 @@ function getStartCommand(fw: string, form: ProjectFormData): string {
   if (fw === "Superpowers") {
     return `## 시작 커맨드\nClaude Code에 아래 메시지 입력 (brainstorming 스킬 자동 활성화):\n\n> Let's build: ${form.title}. ${form.purpose}`;
   }
-  // 조합
   return `## 시작 커맨드 (조합 순서)\n\`\`\`\n# 1단계: 방향 확정\n/office-hours\n\n# 2단계: 장기 컨텍스트 초기화\n/gsd-new-project\n\n# 3단계: 실행\n# Superpowers brainstorming 자동 활성화\n\`\`\``;
 }
 
@@ -43,14 +41,10 @@ function buildClaudeCodePrompt(
   const workflowStr = analysis.workflow.join(" → ");
 
   return `# ${form.title} — Claude Code 착수 프롬프트
-> 생성일: ${date} | 프레임워크: ${fw} | 규모: ${analysis.scale}
+> 생성일: ${date} | 프레임워크: ${fw}
 
 ## 프로젝트 컨텍스트
 - **목적**: ${form.purpose}
-- **유형**: ${form.type}
-- **문제점**: ${form.problem}
-- **원하는 결과물**: ${form.desired_output}
-- **기술 스택**: ${form.tech_stack}
 ${form.notes ? `- **참고**: ${form.notes}` : ""}
 
 ## 분석 요약
@@ -97,7 +91,6 @@ function buildCodexChecklist(
 ): string[] {
   const list = [...analysis.codex_items];
 
-  // 프레임워크별 추가 항목
   if (fw.includes("Superpowers")) {
     list.push("finishing-a-development-branch 실행 완료");
     list.push("requesting-code-review 통과 확인");
@@ -111,7 +104,6 @@ function buildCodexChecklist(
     list.push(form.needs_ux ? "/qa 브라우저 테스트 통과" : "/qa 기본 동작 확인");
   }
 
-  list.push(`${form.tech_stack.split("+")[0].trim()} 빌드 에러 없음`);
   list.push("Git 커밋 메시지 컨벤션 준수");
 
   return list;
@@ -140,8 +132,7 @@ function buildHandoffPrompt(
 ## 이전 세션 요약
 - **프로젝트**: ${form.title}
 - **선정 프레임워크**: ${fw}
-- **작업 유형**: ${form.type} / 규모: ${analysis.scale}
-- **기술 스택**: ${form.tech_stack}
+- **목적**: ${form.purpose}
 
 ## 현재 상태
 - 분석 완료: ${analysis.purpose_summary}
@@ -158,8 +149,7 @@ ${analysis.precautions.map((p) => `- [ ] ${p}`).join("\n")}
 ## 컨텍스트 유지 핵심
 - 프레임워크: ${fw}
 - 목적: ${form.purpose}
-- 원하는 결과물: ${form.desired_output}
-- 기술 스택: ${form.tech_stack}
+${form.notes ? `- 참고: ${form.notes}` : ""}
 `;
 }
 
@@ -178,9 +168,7 @@ function buildLLMWiki(
 |---|---|
 | 프로젝트 | ${form.title} |
 | 착수일 | ${date} |
-| 유형 | ${form.type} |
-| 규모 | ${analysis.scale} |
-| 기술 스택 | ${form.tech_stack} |
+| 목적 | ${form.purpose} |
 
 ## 선정 프레임워크
 **${fw}**
@@ -210,9 +198,7 @@ ${analysis.precautions.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 
 ## 목적
 ${form.purpose}
-
-## 원하는 결과물
-${form.desired_output}
+${form.notes ? `\n## 참고\n${form.notes}` : ""}
 `;
 }
 

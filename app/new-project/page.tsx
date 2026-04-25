@@ -5,12 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useDashboardStore } from "@/lib/store";
 import { StepBar } from "@/components/StepBar";
-import type { ProjectType, ProjectScale, AnalysisResult } from "@/lib/types";
-
-const PROJECT_TYPES: ProjectType[] = [
-  "신규개발","기능추가","리팩터링","버그수정","문서정리","출시전검토","마이그레이션",
-];
-const PROJECT_SCALES: ProjectScale[] = ["소 (1-2일)","중 (1-2주)","대 (1개월+)"];
+import type { AnalysisResult } from "@/lib/types";
 
 const inputStyle = {
   background: "#0e0e0e",
@@ -34,12 +29,7 @@ export default function NewProjectPage() {
   const set = (k: string, v: string | boolean) =>
     setFormData({ [k]: v } as Parameters<typeof setFormData>[0]);
 
-  const isValid =
-    formData.title.trim() &&
-    formData.purpose.trim() &&
-    formData.problem.trim() &&
-    formData.desired_output.trim() &&
-    formData.tech_stack.trim();
+  const isValid = formData.title.trim() && formData.purpose.trim();
 
   const handleSubmit = async () => {
     if (!isValid) return;
@@ -88,7 +78,7 @@ export default function NewProjectPage() {
 
       <h2 className="text-[20px] font-bold mb-1.5 tracking-tight">개발 요청 입력</h2>
       <p className="text-[12px] mb-7" style={{ color: "#555" }}>
-        구체적으로 입력할수록 정확한 프레임워크가 추천됩니다
+        개발 목적과 필요 조건을 입력하면 최적의 프레임워크가 추천됩니다
       </p>
 
       {error && (
@@ -111,43 +101,6 @@ export default function NewProjectPage() {
         <textarea style={{ ...inputStyle, resize:"vertical", minHeight:"72px" }}
           placeholder="왜 이것을 만드는가?"
           value={formData.purpose} onChange={(e) => set("purpose", e.target.value)} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3.5 mb-4">
-        <div>
-          <label className={labelCls} style={labelStyle}>개발 유형</label>
-          <select style={inputStyle} value={formData.type}
-            onChange={(e) => set("type", e.target.value as ProjectType)}>
-            {PROJECT_TYPES.map((t) => <option key={t}>{t}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={labelCls} style={labelStyle}>예상 규모</label>
-          <select style={inputStyle} value={formData.scale}
-            onChange={(e) => set("scale", e.target.value as ProjectScale)}>
-            {PROJECT_SCALES.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <label className={labelCls} style={labelStyle}>현재 문제점</label>
-        <textarea style={{ ...inputStyle, resize:"vertical", minHeight:"72px" }}
-          placeholder="지금 무엇이 문제인가?"
-          value={formData.problem} onChange={(e) => set("problem", e.target.value)} />
-      </div>
-
-      <div className="mb-4">
-        <label className={labelCls} style={labelStyle}>원하는 결과물</label>
-        <textarea style={{ ...inputStyle, resize:"vertical", minHeight:"72px" }}
-          placeholder="완성 시 무엇이 있어야 하는가?"
-          value={formData.desired_output} onChange={(e) => set("desired_output", e.target.value)} />
-      </div>
-
-      <div className="mb-4">
-        <label className={labelCls} style={labelStyle}>기술 스택</label>
-        <input style={inputStyle} placeholder="예: Next.js 14 + FastAPI + Supabase + Claude API"
-          value={formData.tech_stack} onChange={(e) => set("tech_stack", e.target.value)} />
       </div>
 
       {/* ANALYSIS FLAGS */}
@@ -191,7 +144,7 @@ export default function NewProjectPage() {
           border: "none",
           cursor: isValid && !loading ? "pointer" : "not-allowed",
         }}>
-        {loading ? "AI 분석 중..." : isValid ? "AI 분석 시작 →" : "필수 항목을 모두 입력해주세요"}
+        {loading ? "AI 분석 중..." : isValid ? "AI 분석 시작 →" : "제목과 목적을 입력해주세요"}
       </button>
     </div>
   );

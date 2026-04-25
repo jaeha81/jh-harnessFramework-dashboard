@@ -32,11 +32,6 @@ interface DashboardStore {
 const DEFAULT_FORM: ProjectFormData = {
   title: "",
   purpose: "",
-  type: "신규개발",
-  scale: "중 (1-2주)",
-  problem: "",
-  desired_output: "",
-  tech_stack: "",
   notes: "",
   needs_test: false,
   is_longterm: false,

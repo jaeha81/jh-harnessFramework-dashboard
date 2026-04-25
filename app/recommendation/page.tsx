@@ -38,8 +38,6 @@ export default function RecommendationPage() {
   const mainColor = FW_COLOR[analysis.recommended_framework] ?? "#aaa";
 
   const metrics = [
-    { label: "작업 유형", value: analysis.task_type, color: undefined },
-    { label: "작업 규모", value: analysis.scale, color: undefined },
     { label: "컨텍스트 위험", value: analysis.context_risk, color: RISK_COLOR[analysis.context_risk] },
     { label: "테스트 필요도", value: analysis.test_necessity, color: RISK_COLOR[analysis.test_necessity] },
     { label: "UX 검토", value: analysis.ux_necessity, color: RISK_COLOR[analysis.ux_necessity] },
