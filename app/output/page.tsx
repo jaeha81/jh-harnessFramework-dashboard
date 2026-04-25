@@ -94,6 +94,33 @@ export default function OutputPage() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadRequestJson = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    const safeTitle = formData.title.replace(/[\\/:*?"<>|]/g, "-").trim() || "착수요청";
+    const filename = `REQ-${date}-${safeTitle}.json`;
+    const payload = {
+      meta: {
+        type: "착수요청",
+        created_at: new Date().toISOString(),
+        framework: chosenFramework,
+      },
+      form: formData,
+      generated: {
+        claude_code_prompt: output.claude_code_prompt,
+        codex_checklist: output.codex_checklist,
+        handoff_prompt: output.handoff_prompt,
+        llm_wiki_entry: output.llm_wiki_entry,
+      },
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSaveRequest = async () => {
     setReqStatus("loading");
     setReqError(null);
@@ -207,6 +234,15 @@ export default function OutputPage() {
           filename={getMdFilename()}
           content={getMdContent()}
         />
+
+        <button
+          onClick={downloadRequestJson}
+          className="w-full text-[12px] font-mono py-3 flex items-center justify-center gap-2 transition-colors hover:border-[#444]"
+          style={{ background:"transparent", border:"1px dashed #2a2a2a", color:"#666", cursor:"pointer" }}>
+          <span style={{ color:"#3b82f6" }}>↓</span>
+          착수 요청 JSON 다운로드
+          <span style={{ color:"#333", fontSize:"10px" }}>(harness-requests/ 폴더에 저장)</span>
+        </button>
 
         {/* 착수 요청 구조화 저장 */}
         <button
