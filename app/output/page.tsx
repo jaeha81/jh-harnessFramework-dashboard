@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDashboardStore } from "@/lib/store";
 import { StepBar } from "@/components/StepBar";
 import { CopyButton } from "@/components/CopyButton";
@@ -30,10 +30,11 @@ export default function OutputPage() {
   const { output, formData, chosenFramework, resetSession } = useDashboardStore();
   const [tab, setTab] = useState<TabId>("prompt");
 
-  if (!output) {
-    router.replace("/new-project");
-    return null;
-  }
+  useEffect(() => {
+    if (!output) router.replace("/new-project");
+  }, [output, router]);
+
+  if (!output) return null;
 
   const handleNew = () => {
     resetSession();
@@ -118,6 +119,12 @@ export default function OutputPage() {
       )}
 
       <div className="flex gap-2.5 mt-7">
+        <Link href="/" className="flex-1">
+          <button className="w-full text-[12px] py-3.5 transition-colors"
+            style={{ background:"transparent", color:"#666", border:"1px solid #222", cursor:"pointer" }}>
+            홈
+          </button>
+        </Link>
         <Link href="/history" className="flex-1">
           <button className="w-full text-[12px] py-3.5 transition-colors"
             style={{ background:"transparent", color:"#666", border:"1px solid #222", cursor:"pointer" }}>
@@ -126,7 +133,7 @@ export default function OutputPage() {
         </Link>
         <button onClick={handleNew} className="flex-[2] text-[13px] font-bold py-3.5 hover:bg-gray-100 transition-colors"
           style={{ background:"#fff", color:"#000", border:"none", cursor:"pointer" }}>
-          새 착수 시작 →
+          새 착수 →
         </button>
       </div>
     </div>

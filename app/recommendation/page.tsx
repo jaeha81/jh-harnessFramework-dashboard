@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useEffect } from "react";
 import { useDashboardStore } from "@/lib/store";
 import { StepBar } from "@/components/StepBar";
 import type { RiskLevel } from "@/lib/types";
@@ -23,10 +24,11 @@ export default function RecommendationPage() {
   const router = useRouter();
   const { analysis, chosenFramework } = useDashboardStore();
 
-  if (!analysis) {
-    router.replace("/new-project");
-    return null;
-  }
+  useEffect(() => {
+    if (!analysis) router.replace("/new-project");
+  }, [analysis, router]);
+
+  if (!analysis) return null;
 
   const displayFw =
     analysis.recommended_framework === "조합"

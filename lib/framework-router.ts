@@ -74,16 +74,11 @@ export function routeFramework(form: ProjectFormData): AnalysisResult {
 
   if (isCombo) {
     recommended = "조합";
-    // gstack 먼저 (방향), gsd (장기관리), superpowers (실행)
-    combinationOrder = [
-      scores.gstack >= scores.gsd ? "gstack" : "gsd",
-      scores.gsd >= scores.superpowers ? "gsd" : "superpowers",
-      third,
-    ].filter((v, i, a) => a.indexOf(v) === i);
+    // 워크플로우 순서: gstack(방향) → GSD(컨텍스트) → Superpowers(실행)
+    combinationOrder = ["gstack", "GSD", "Superpowers"];
 
     reason = `${form.type} + ${form.scale} 규모는 단일 프레임워크보다 조합이 효과적입니다. ` +
-      `${combinationOrder[0] === "gstack" ? "/office-hours로 방향 확정 후 " : ""}` +
-      `${combinationOrder.includes("gsd") ? "/gsd-new-project로 장기 컨텍스트 관리, " : ""}` +
+      `/office-hours로 방향 확정 후 /gsd-new-project로 장기 컨텍스트 관리, ` +
       `Superpowers subagent-driven-development로 실행합니다.`;
   } else if (top === "superpowers") {
     recommended = "Superpowers";

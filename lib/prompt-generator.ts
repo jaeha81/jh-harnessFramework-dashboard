@@ -8,11 +8,15 @@ const FW_INSTALL: Record<string, string> = {
 };
 
 function getInstall(fw: string): string {
-  for (const [key, cmd] of Object.entries(FW_INSTALL)) {
-    if (fw.includes(key)) return `## 프레임워크 설치\n\`\`\`bash\n${cmd}\n\`\`\`\n`;
+  const matched = Object.entries(FW_INSTALL).filter(([key]) => fw.includes(key));
+  if (matched.length === 1) {
+    return `## 프레임워크 설치\n\`\`\`bash\n${matched[0][1]}\n\`\`\`\n`;
   }
-  // 조합 모드
-  return `## 프레임워크 설치\n\`\`\`bash\n# gstack\n${FW_INSTALL.gstack}\n\n# GSD\n${FW_INSTALL.GSD}\n\n# Superpowers\n${FW_INSTALL.Superpowers}\n\`\`\`\n`;
+  // 조합 모드: 매칭된 모든 프레임워크 설치 명령 출력
+  const installs = matched.length > 0
+    ? matched.map(([key, cmd]) => `# ${key}\n${cmd}`).join("\n\n")
+    : Object.entries(FW_INSTALL).map(([key, cmd]) => `# ${key}\n${cmd}`).join("\n\n");
+  return `## 프레임워크 설치\n\`\`\`bash\n${installs}\n\`\`\`\n`;
 }
 
 function getStartCommand(fw: string, form: ProjectFormData): string {

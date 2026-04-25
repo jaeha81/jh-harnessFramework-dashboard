@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDashboardStore } from "@/lib/store";
 import { StepBar } from "@/components/StepBar";
 import { FRAMEWORK_COMBINATION_OPTIONS } from "@/lib/framework-data";
@@ -15,10 +15,11 @@ export default function ReviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  if (!analysis) {
-    router.replace("/new-project");
-    return null;
-  }
+  useEffect(() => {
+    if (!analysis) router.replace("/new-project");
+  }, [analysis, router]);
+
+  if (!analysis) return null;
 
   const aiRec =
     analysis.recommended_framework === "조합"
