@@ -2,6 +2,8 @@
 export interface ProjectFormData {
   title: string;
   purpose: string;
+  instructions: string;
+  references: string;
   notes: string;
   needs_test: boolean;
   is_longterm: boolean;

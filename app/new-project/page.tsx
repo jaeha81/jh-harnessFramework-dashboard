@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useDashboardStore } from "@/lib/store";
 import { StepBar } from "@/components/StepBar";
 import type { AnalysisResult } from "@/lib/types";
@@ -20,14 +20,62 @@ const inputStyle = {
   appearance: "none" as const,
 };
 
+const ACCEPTED = ".md,.txt,.docx";
+
+async function extractText(file: File): Promise<string> {
+  if (file.name.endsWith(".docx")) {
+    const mammoth = await import("mammoth");
+    const buf = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buf });
+    return result.value;
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target?.result as string ?? "");
+    reader.onerror = reject;
+    reader.readAsText(file, "utf-8");
+  });
+}
+
 export default function NewProjectPage() {
   const router = useRouter();
   const { formData, setFormData, setAnalysis } = useDashboardStore();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (k: string, v: string | boolean) =>
     setFormData({ [k]: v } as Parameters<typeof setFormData>[0]);
+
+  const handleFile = useCallback(async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["md", "txt", "docx"].includes(ext ?? "")) {
+      setError("MD, TXT, DOCX 파일만 지원됩니다.");
+      return;
+    }
+    try {
+      const text = await extractText(file);
+      setFormData({ instructions: text });
+      setUploadedFile(`${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+      setError(null);
+    } catch {
+      setError("파일을 읽는 중 오류가 발생했습니다.");
+    }
+  }, [setFormData]);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
+  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
 
   const isValid = formData.title.trim() && formData.purpose.trim();
 
@@ -35,7 +83,6 @@ export default function NewProjectPage() {
     if (!isValid) return;
     setError(null);
     setLoading(true);
-
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -43,10 +90,7 @@ export default function NewProjectPage() {
         body: JSON.stringify({ formData }),
       });
       const json = await res.json() as { success: boolean; data?: AnalysisResult; error?: string };
-
-      if (!json.success || !json.data) {
-        throw new Error(json.error ?? "분석 실패");
-      }
+      if (!json.success || !json.data) throw new Error(json.error ?? "분석 실패");
 
       const rec = json.data.recommended_framework === "조합"
         ? (json.data.combination_order ?? []).join("+")
@@ -103,6 +147,75 @@ export default function NewProjectPage() {
           value={formData.purpose} onChange={(e) => set("purpose", e.target.value)} />
       </div>
 
+      {/* 상세 지침서 */}
+      <div className={sectionLabel} style={sectionStyle}>상세 지침서 · 명령 프롬프트</div>
+
+      {/* 드래그앤드롭 업로드 영역 */}
+      <div
+        className="mb-3 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200"
+        style={{
+          border: `2px dashed ${dragOver ? "#555" : "#252525"}`,
+          background: dragOver ? "#ffffff05" : "#0a0a0a",
+          padding: "24px 16px",
+          minHeight: "100px",
+        }}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input ref={fileInputRef} type="file" accept={ACCEPTED} className="hidden" onChange={onFileChange} />
+
+        {uploadedFile ? (
+          <>
+            <div className="text-[11px] font-mono" style={{ color: "#22c55e" }}>✓ {uploadedFile}</div>
+            <div className="text-[10px]" style={{ color: "#444" }}>다른 파일로 교체하려면 클릭 또는 드래그</div>
+          </>
+        ) : (
+          <>
+            <div className="text-[22px]" style={{ color: "#333" }}>↑</div>
+            <div className="text-[12px] font-mono" style={{ color: "#555" }}>
+              MD · TXT · DOCX 파일을 드래그하거나 클릭해서 업로드
+            </div>
+            <div className="text-[10px]" style={{ color: "#333" }}>
+              Word 문서 · 마크다운 · 텍스트 파일 지원
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 직접 붙여넣기 */}
+      <div className="mb-4">
+        <label className={labelCls} style={labelStyle}>
+          또는 직접 붙여넣기 (명령 프롬프트 · 계획서 · 지침서)
+        </label>
+        <textarea
+          style={{ ...inputStyle, resize:"vertical", minHeight:"120px", fontSize:"12px" }}
+          placeholder={"GPT/Claude 출력 결과, 상세 기획서, 명령 프롬프트 등을 그대로 붙여넣기\n파일 업로드 시 자동으로 채워집니다"}
+          value={formData.instructions}
+          onChange={(e) => { set("instructions", e.target.value); setUploadedFile(null); }}
+        />
+        {formData.instructions && (
+          <div className="mt-1 text-[10px] font-mono" style={{ color: "#444" }}>
+            {formData.instructions.length.toLocaleString()}자 입력됨
+          </div>
+        )}
+      </div>
+
+      {/* 참고 링크 */}
+      <div className={sectionLabel} style={sectionStyle}>참고 링크</div>
+      <div className="mb-4">
+        <label className={labelCls} style={labelStyle}>
+          GitHub · 공식 문서 · YouTube · 사이트 URL (한 줄에 하나씩)
+        </label>
+        <textarea
+          style={{ ...inputStyle, resize:"vertical", minHeight:"72px", fontSize:"12px" }}
+          placeholder={"https://github.com/example/repo\nhttps://docs.example.com\nhttps://youtube.com/watch?v=..."}
+          value={formData.references}
+          onChange={(e) => set("references", e.target.value)}
+        />
+      </div>
+
       {/* ANALYSIS FLAGS */}
       <div className={sectionLabel} style={sectionStyle}>ANALYSIS FLAGS</div>
       <div className="grid grid-cols-2 gap-2 mb-7">
@@ -130,9 +243,9 @@ export default function NewProjectPage() {
       {/* OPTIONAL */}
       <div className={sectionLabel} style={sectionStyle}>OPTIONAL</div>
       <div className="mb-6">
-        <label className={labelCls} style={labelStyle}>참고 링크 또는 메모</label>
+        <label className={labelCls} style={labelStyle}>간단 메모</label>
         <textarea style={{ ...inputStyle, resize:"vertical", minHeight:"56px" }}
-          placeholder="GitHub 링크, 관련 문서, 특이사항 등"
+          placeholder="특이사항, 제약 조건 등"
           value={formData.notes} onChange={(e) => set("notes", e.target.value)} />
       </div>
 

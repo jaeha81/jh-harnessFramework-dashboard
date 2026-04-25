@@ -40,12 +40,18 @@ function buildClaudeCodePrompt(
   const date = new Date().toLocaleDateString("ko-KR");
   const workflowStr = analysis.workflow.join(" → ");
 
+  const refLines = form.references
+    ? form.references.split("\n").filter(Boolean).map((r) => `- ${r.trim()}`).join("\n")
+    : "";
+
   return `# ${form.title} — Claude Code 착수 프롬프트
 > 생성일: ${date} | 프레임워크: ${fw}
 
 ## 프로젝트 컨텍스트
 - **목적**: ${form.purpose}
-${form.notes ? `- **참고**: ${form.notes}` : ""}
+${form.notes ? `- **메모**: ${form.notes}` : ""}
+${refLines ? `\n## 참고 링크\n${refLines}` : ""}
+${form.instructions ? `\n## 상세 지침서 / 명령 프롬프트\n${form.instructions}` : ""}
 
 ## 분석 요약
 ${analysis.purpose_summary}
@@ -149,7 +155,9 @@ ${analysis.precautions.map((p) => `- [ ] ${p}`).join("\n")}
 ## 컨텍스트 유지 핵심
 - 프레임워크: ${fw}
 - 목적: ${form.purpose}
-${form.notes ? `- 참고: ${form.notes}` : ""}
+${form.notes ? `- 메모: ${form.notes}` : ""}
+${form.references ? `\n## 참고 링크\n${form.references.split("\n").filter(Boolean).map((r) => `- ${r.trim()}`).join("\n")}` : ""}
+${form.instructions ? `\n## 상세 지침서\n${form.instructions}` : ""}
 `;
 }
 
@@ -198,7 +206,9 @@ ${analysis.precautions.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 
 ## 목적
 ${form.purpose}
-${form.notes ? `\n## 참고\n${form.notes}` : ""}
+${form.notes ? `\n## 메모\n${form.notes}` : ""}
+${form.references ? `\n## 참고 링크\n${form.references.split("\n").filter(Boolean).map((r) => `- ${r.trim()}`).join("\n")}` : ""}
+${form.instructions ? `\n## 상세 지침서\n${form.instructions.slice(0, 500)}${form.instructions.length > 500 ? "\n...(전체 내용은 착수 프롬프트 참조)" : ""}` : ""}
 `;
 }
 

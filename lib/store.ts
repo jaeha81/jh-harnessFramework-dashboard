@@ -32,6 +32,8 @@ interface DashboardStore {
 const DEFAULT_FORM: ProjectFormData = {
   title: "",
   purpose: "",
+  instructions: "",
+  references: "",
   notes: "",
   needs_test: false,
   is_longterm: false,
