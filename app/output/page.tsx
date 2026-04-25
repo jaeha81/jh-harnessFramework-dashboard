@@ -1,12 +1,11 @@
 "use client";
-
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useDashboardStore } from "@/lib/store";
 import { StepBar } from "@/components/StepBar";
 import { CopyButton } from "@/components/CopyButton";
-import { saveToDrive } from "@/lib/google-drive";
+import { GoogleDriveButton } from "@/components/GoogleDriveButton";
 
 type TabId = "prompt" | "codex" | "handoff" | "wiki";
 
@@ -18,8 +17,7 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 const CodeBlock = ({ content }: { content: string }) => (
-  <pre
-    className="text-[11px] font-mono leading-[1.75] overflow-x-auto whitespace-pre-wrap break-words p-5"
+  <pre className="text-[11px] font-mono leading-[1.75] overflow-x-auto whitespace-pre-wrap break-words p-5"
     style={{ background:"#080808", border:"1px solid #161616", color:"#aaa", margin:0 }}
   >
     {content}
@@ -30,9 +28,6 @@ export default function OutputPage() {
   const router = useRouter();
   const { output, formData, chosenFramework, resetSession } = useDashboardStore();
   const [tab, setTab] = useState<TabId>("prompt");
-  const [driveLoading, setDriveLoading] = useState(false);
-  const [driveLink, setDriveLink] = useState<string | null>(null);
-  const [driveError, setDriveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!output) router.replace("/new-project");
@@ -45,50 +40,51 @@ export default function OutputPage() {
     router.push("/new-project");
   };
 
-  const handleDriveSave = async () => {
-    setDriveLoading(true);
-    setDriveError(null);
-    setDriveLink(null);
-    try {
-      const date = new Date().toISOString().slice(0, 10);
-      const safeTitle = formData.title.replace(/[\\/:*?"<>|]/g, "-").trim() || "착수패키지";
-      const filename = `${date}-${safeTitle}.md`;
-      const content = buildMdContent();
-      const link = await saveToDrive(filename, content);
-      setDriveLink(link);
-    } catch (e) {
-      setDriveError(e instanceof Error ? e.message : "저장 실패");
-    } finally {
-      setDriveLoading(false);
-    }
+  const getMdFilename = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    const safeTitle = formData.title.replace(/[\\/:*?"<>|]/g, "-").trim() || "착수패키지";
+    return `${date}-${safeTitle}.md`;
   };
 
-  const buildMdContent = () => {
+  const getMdContent = () => {
     const date = new Date().toISOString().slice(0, 10);
     return [
       `# ${formData.title} — 착수 패키지`,
       `> 생성일: ${date} | 프레임워크: ${chosenFramework}`,
-      ``, `---`, ``,
-      `## Claude Code 프롬프트`, ``, output!.claude_code_prompt,
-      ``, `---`, ``,
-      `## Codex 체크리스트`, ``,
-      output!.codex_checklist.map((i) => `- [ ] ${i}`).join("\n"),
-      ``, `---`, ``,
-      `## Handoff 프롬프트`, ``, output!.handoff_prompt,
-      ``, `---`, ``,
-      `## LLM Wiki`, ``, output!.llm_wiki_entry,
+      ``,
+      `---`,
+      ``,
+      `## Claude Code 프롬프트`,
+      ``,
+      output.claude_code_prompt,
+      ``,
+      `---`,
+      ``,
+      `## Codex 체크리스트`,
+      ``,
+      output.codex_checklist.map((i) => `- [ ] ${i}`).join("\n"),
+      ``,
+      `---`,
+      ``,
+      `## Handoff 프롬프트`,
+      ``,
+      output.handoff_prompt,
+      ``,
+      `---`,
+      ``,
+      `## LLM Wiki`,
+      ``,
+      output.llm_wiki_entry,
     ].join("\n");
   };
 
   const downloadMd = () => {
-    const date = new Date().toISOString().slice(0, 10);
-    const safeTitle = formData.title.replace(/[\\/:*?"<>|]/g, "-").trim() || "착수패키지";
-    const filename = `${date}-${safeTitle}.md`;
-    const blob = new Blob([buildMdContent()], { type: "text/markdown;charset=utf-8" });
+    const content = getMdContent();
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.download = getMdFilename();
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -96,7 +92,6 @@ export default function OutputPage() {
   return (
     <div>
       <StepBar current="output" />
-
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-2 h-2 rounded-full" style={{ background:"#22c55e" }} />
@@ -114,8 +109,7 @@ export default function OutputPage() {
           <button key={t.id} onClick={() => setTab(t.id)}
             className="font-mono text-[11px] px-3.5 py-2.5 whitespace-nowrap transition-all duration-200"
             style={{
-              background:"none",
-              border:"none",
+              background:"none", border:"none",
               borderBottom: `2px solid ${tab === t.id ? "#fff" : "transparent"}`,
               color: tab === t.id ? "#fff" : "#444",
               cursor:"pointer",
@@ -134,7 +128,6 @@ export default function OutputPage() {
           <CodeBlock content={output.claude_code_prompt} />
         </div>
       )}
-
       {tab === "codex" && (
         <div>
           {output.codex_checklist?.map((item, i) => (
@@ -144,14 +137,10 @@ export default function OutputPage() {
             </div>
           ))}
           <div className="mt-3.5">
-            <CopyButton
-              text={(output.codex_checklist ?? []).map((i) => `- [ ] ${i}`).join("\n")}
-              label="Markdown 복사"
-            />
+            <CopyButton text={(output.codex_checklist ?? []).map((i) => `- [ ] ${i}`).join("\n")} label="Markdown 복사" />
           </div>
         </div>
       )}
-
       {tab === "handoff" && (
         <div>
           <div className="flex justify-end mb-2">
@@ -160,7 +149,6 @@ export default function OutputPage() {
           <CodeBlock content={output.handoff_prompt} />
         </div>
       )}
-
       {tab === "wiki" && (
         <div>
           <div className="flex justify-end mb-2">
@@ -170,39 +158,21 @@ export default function OutputPage() {
         </div>
       )}
 
-      {/* 저장 버튼 영역 */}
-      <div className="mt-7 flex flex-col gap-2">
-        {/* Google Drive 저장 */}
-        <button onClick={handleDriveSave} disabled={driveLoading}
-          className="w-full text-[12px] font-mono py-3 flex items-center justify-center gap-2 transition-colors hover:border-[#555]"
-          style={{ background:"transparent", border:"1px solid #1e3a1e", color: driveLoading ? "#444" : "#4ade80", cursor: driveLoading ? "not-allowed" : "pointer" }}>
-          <span>☁</span>
-          {driveLoading ? "Google Drive 저장 중..." : "Google Drive에 저장"}
-          <span style={{ color:"#2d5a2d", fontSize:"10px" }}>({formData.title || "착수패키지"})</span>
-        </button>
-
-        {driveLink && (
-          <a href={driveLink} target="_blank" rel="noopener noreferrer"
-            className="w-full text-[11px] font-mono py-2 flex items-center justify-center gap-1.5 transition-colors"
-            style={{ background:"#0a1a0a", border:"1px solid #1e3a1e", color:"#4ade80" }}>
-            ✓ Drive에 저장됨 — 파일 열기 →
-          </a>
-        )}
-
-        {driveError && (
-          <div className="text-[11px] px-3 py-2" style={{ border:"1px solid #ef4444", background:"#ef444410", color:"#ef4444" }}>
-            {driveError}
-          </div>
-        )}
-
-        {/* MD 다운로드 */}
-        <button onClick={downloadMd}
+      {/* 저장 버튼들 */}
+      <div className="flex flex-col gap-2 mt-7">
+        <button
+          onClick={downloadMd}
           className="w-full text-[12px] font-mono py-3 flex items-center justify-center gap-2 transition-colors hover:border-[#444]"
-          style={{ background:"transparent", border:"1px dashed #2a2a2a", color:"#555", cursor:"pointer" }}>
+          style={{ background:"transparent", border:"1px dashed #2a2a2a", color:"#666", cursor:"pointer" }}>
           <span style={{ color:"#22c55e" }}>↓</span>
           .md 파일 다운로드
-          <span style={{ color:"#333", fontSize:"10px" }}>(Obsidian Vault 저장용)</span>
+          <span style={{ color:"#333", fontSize:"10px" }}>(Obsidian Vault에 저장 가능)</span>
         </button>
+
+        <GoogleDriveButton
+          filename={getMdFilename()}
+          content={getMdContent()}
+        />
       </div>
 
       <div className="flex gap-2.5 mt-2.5">
