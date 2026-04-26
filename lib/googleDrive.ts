@@ -202,3 +202,37 @@ export function clearDriveToken() {
     accessToken = null;
     tokenClient = null;
   }
+
+export interface DriveFileInfo {
+  id: string;
+  name: string;
+  modifiedTime: string;
+}
+
+export async function listDriveRequests(): Promise<DriveFileInfo[]> {
+  const token = await getAccessToken();
+  const folderId = await ensureFolder(token);
+  const q = encodeURIComponent(
+    `'${folderId}' in parents and mimeType='application/json' and trashed=false`
+  );
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime%20desc`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) {
+    const err = await res.json() as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? "Drive 목록 조회 실패");
+  }
+  const data = await res.json() as { files: DriveFileInfo[] };
+  return data.files ?? [];
+}
+
+export async function readDriveFile(fileId: string): Promise<string> {
+  const token = await getAccessToken();
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error("파일 읽기 실패");
+  return res.text();
+}

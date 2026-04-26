@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon.svg" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
       </head>
       <body>
         <ServiceWorkerRegistrar />
