@@ -1,12 +1,16 @@
 {
+  "id": "/",
   "name": "JH 하네스 프레임워크 대시보드",
   "short_name": "JH Harness",
   "description": "Claude Code 프레임워크 분석 및 착수 프롬프트 생성기",
+  "lang": "ko",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#080808",
   "theme_color": "#080808",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "categories": ["productivity", "developer-tools"],
   "icons": [
     {
       "src": "/apple-icon.png",
@@ -31,6 +35,18 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "새 착수 시작",
+      "url": "/new-project",
+      "description": "새 개발 착수 입력 시작"
+    },
+    {
+      "name": "기록 보기",
+      "url": "/history",
+      "description": "이전 착수 기록 조회"
     }
   ]
 }

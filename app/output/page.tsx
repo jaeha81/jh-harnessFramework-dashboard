@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDashboardStore } from "@/lib/store";
 import { StepBar } from "@/components/StepBar";
 import { CopyButton } from "@/components/CopyButton";
@@ -29,14 +29,20 @@ type RequestSaveStatus = "idle" | "loading" | "success" | "error";
 
 export default function OutputPage() {
   const router = useRouter();
-  const { output, formData, chosenFramework, resetSession } = useDashboardStore();
+  const { output, formData, chosenFramework, resetSession, saveToHistory } = useDashboardStore();
   const [tab, setTab] = useState<TabId>("prompt");
   const [reqStatus, setReqStatus] = useState<RequestSaveStatus>("idle");
   const [reqError, setReqError] = useState<string | null>(null);
 
+  const historySaved = useRef(false);
+
   useEffect(() => {
-    if (!output) router.replace("/new-project");
-  }, [output, router]);
+    if (!output) { router.replace("/new-project"); return; }
+    if (!historySaved.current) {
+      historySaved.current = true;
+      saveToHistory();
+    }
+  }, [output, router, saveToHistory]);
 
   if (!output) return null;
 
