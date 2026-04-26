@@ -55,8 +55,13 @@ export default function RecommendationPage() {
       <StepBar current="recommendation" />
 
       <div className="mb-7">
-        <div className="text-[9px] font-mono tracking-[.15em] mb-1.5" style={{ color:"#444" }}>
-          ANALYSIS COMPLETE
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className="text-[9px] font-mono tracking-[.15em]" style={{ color:"#444" }}>
+            ANALYSIS COMPLETE
+          </div>
+          <div className="text-[9px] font-mono px-1.5 py-0.5" style={{ background:"#60a5fa18", border:"1px solid #60a5fa44", color:"#60a5fa" }}>
+            AI
+          </div>
         </div>
         <h2 className="text-[20px] font-bold mb-1">분석 결과</h2>
         <p className="text-[12px]" style={{ color:"#555" }}>{analysis.purpose_summary}</p>

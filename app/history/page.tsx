@@ -158,10 +158,18 @@ export default function HistoryPage() {
               className="text-[12px] font-mono px-4 py-2.5 transition-colors"
               style={{ background: "#fff", color: "#000", border: "none", cursor: "pointer" }}
             >
-              이 요청으로 재분석 →
+              재분석 →
             </button>
           )}
-          <CopyButton text={driveRecord.raw} label="전체 JSON 복사" />
+          <Link href="/pc-setup">
+            <button
+              className="text-[12px] font-mono px-4 py-2.5 transition-colors"
+              style={{ background: "transparent", border: "1px solid #4285f4", color: "#4285f4", cursor: "pointer" }}
+            >
+              💻 PC 개발 시작
+            </button>
+          </Link>
+          <CopyButton text={driveRecord.raw} label="JSON 복사" />
         </div>
       </div>
     );
