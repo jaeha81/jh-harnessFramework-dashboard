@@ -86,10 +86,22 @@ async function getAccessToken(): Promise<string> {
   await loadGisScript();
 
   return new Promise((resolve, reject) => {
+    let settled = false;
+
+    // 120s timeout — handles blocked popups or silent-auth hangs
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("Google 로그인 팝업이 나타나지 않습니다. 브라우저에서 팝업 차단을 허용한 후 다시 시도해주세요."));
+    }, 120_000);
+
     tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: SCOPE,
       callback: (response: TokenResponse) => {
+        clearTimeout(timer);
+        if (settled) return;
+        settled = true;
         if (response.error || !response.access_token) {
           reject(new Error(response.error ?? "토큰 발급 실패"));
           return;
@@ -98,8 +110,9 @@ async function getAccessToken(): Promise<string> {
         resolve(response.access_token);
       },
     });
-    // No prompt:"consent" — GIS will skip consent screen for already-granted users
-    tokenClient.requestAccessToken({});
+    // "select_account" forces the account-picker popup to appear immediately
+    // Without this, GIS tries silent auth → fails silently → callback never fires
+    tokenClient.requestAccessToken({ prompt: "select_account" });
   });
 }
 
