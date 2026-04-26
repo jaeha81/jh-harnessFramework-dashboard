@@ -9,13 +9,13 @@ const FW_INSTALL: Record<string, string> = {
 
 function getInstall(fw: string): string {
   const matched = Object.entries(FW_INSTALL).filter(([key]) => fw.includes(key));
-  if (matched.length === 1) {
-    return `## 프레임워크 설치\n\`\`\`bash\n${matched[0][1]}\n\`\`\`\n`;
-  }
-  const installs = matched.length > 0
-    ? matched.map(([key, cmd]) => `# ${key}\n${cmd}`).join("\n\n")
-    : Object.entries(FW_INSTALL).map(([key, cmd]) => `# ${key}\n${cmd}`).join("\n\n");
-  return `## 프레임워크 설치\n\`\`\`bash\n${installs}\n\`\`\`\n`;
+  const installs =
+    matched.length > 0
+      ? matched.map(([key, cmd]) => `# ${key}\n${cmd}`).join("\n\n")
+      : Object.entries(FW_INSTALL)
+          .map(([key, cmd]) => `# ${key}\n${cmd}`)
+          .join("\n\n");
+  return `## 프레임워크 설치\n\`\`\`bash\n${installs}\n\`\`\``;
 }
 
 function getStartCommand(fw: string, form: ProjectFormData): string {
@@ -31,7 +31,74 @@ function getStartCommand(fw: string, form: ProjectFormData): string {
   return `## 시작 커맨드 (조합 순서)\n\`\`\`\n# 1단계: 방향 확정\n/office-hours\n\n# 2단계: 장기 컨텍스트 초기화\n/gsd-new-project\n\n# 3단계: 실행\n# Superpowers brainstorming 자동 활성화\n\`\`\``;
 }
 
-// ─── Claude Code 프롬프트 ──────────────────────────────────────
+// ─── 지침서 파싱: 구조화된 섹션으로 분해 ────────────────────
+interface ParsedInstructions {
+  sections: { heading: string; items: string[] }[];
+  rawTasks: string[];        // 번호/불릿 항목
+  freeText: string;          // 나머지 본문
+  hasStructure: boolean;
+}
+
+function parseInstructions(text: string): ParsedInstructions {
+  if (!text.trim()) {
+    return { sections: [], rawTasks: [], freeText: "", hasStructure: false };
+  }
+
+  const lines = text.split(/\n/).map((l) => l.trim());
+  const sections: { heading: string; items: string[] }[] = [];
+  const rawTasks: string[] = [];
+  const freeTextLines: string[] = [];
+
+  let currentSection: { heading: string; items: string[] } | null = null;
+
+  for (const line of lines) {
+    if (!line) continue;
+
+    // 헤더 감지 (## 헤더, [헤더], 헤더:)
+    const headingMatch = line.match(/^#{1,3}\s+(.+)/) || line.match(/^\[([^\]]+)\]$/) || line.match(/^([가-힣A-Za-z\s]{2,20}):$/);
+    if (headingMatch) {
+      if (currentSection) sections.push(currentSection);
+      currentSection = { heading: headingMatch[1].trim(), items: [] };
+      continue;
+    }
+
+    // 번호/불릿 항목
+    const taskMatch = line.match(/^(\d+[\.\)]\s+|[-*•]\s+|>\s*)(.+)/);
+    if (taskMatch) {
+      const item = taskMatch[2].trim();
+      if (item.length > 2) {
+        rawTasks.push(item);
+        if (currentSection) currentSection.items.push(item);
+        continue;
+      }
+    }
+
+    // 일반 텍스트
+    if (currentSection) {
+      currentSection.items.push(line);
+    } else {
+      freeTextLines.push(line);
+    }
+  }
+
+  if (currentSection) sections.push(currentSection);
+
+  return {
+    sections,
+    rawTasks,
+    freeText: freeTextLines.join(" ").slice(0, 600),
+    hasStructure: sections.length > 0 || rawTasks.length > 3,
+  };
+}
+
+// ─── 참고 링크 포매팅 ─────────────────────────────────────────
+function formatRefs(references: string): string {
+  if (!references.trim()) return "";
+  const refs = references.split(/\n/).map((r) => r.trim()).filter(Boolean);
+  return refs.map((r) => `- ${r}`).join("\n");
+}
+
+// ─── Claude Code 프롬프트 ─────────────────────────────────────
 function buildClaudeCodePrompt(
   form: ProjectFormData,
   analysis: AnalysisResult,
@@ -39,9 +106,27 @@ function buildClaudeCodePrompt(
 ): string {
   const date = new Date().toLocaleDateString("ko-KR");
   const workflowStr = analysis.workflow.join(" → ");
+  const parsed = parseInstructions(form.instructions);
+  const refs = formatRefs(form.references);
 
-  const refLines = form.references
-    ? form.references.split("\n").filter(Boolean).map((r) => `- ${r.trim()}`).join("\n")
+  // 핵심 요구사항 블록: 지침서 내용을 요약해 앞에 배치
+  let requirementsBlock = "";
+  if (parsed.hasStructure && parsed.sections.length > 0) {
+    requirementsBlock = `\n## 핵심 요구사항 (지침서 분석)\n`;
+    for (const sec of parsed.sections.slice(0, 6)) {
+      requirementsBlock += `\n### ${sec.heading}\n`;
+      requirementsBlock += sec.items.slice(0, 8).map((i) => `- ${i}`).join("\n") + "\n";
+    }
+  } else if (parsed.rawTasks.length > 0) {
+    requirementsBlock = `\n## 핵심 요구사항 (지침서 분석)\n`;
+    requirementsBlock += parsed.rawTasks.slice(0, 12).map((t) => `- [ ] ${t}`).join("\n") + "\n";
+  } else if (parsed.freeText) {
+    requirementsBlock = `\n## 지침서 요약\n${parsed.freeText}\n`;
+  }
+
+  // 전체 지침서는 별도 섹션으로 — 길면 잘라냄
+  const fullInstructions = form.instructions.trim()
+    ? `\n## 전체 지침서 원문\n\`\`\`\n${form.instructions.slice(0, 3000)}${form.instructions.length > 3000 ? "\n...(이하 생략)" : ""}\n\`\`\``
     : "";
 
   return `# ${form.title} — Claude Code 착수 프롬프트
@@ -50,9 +135,8 @@ function buildClaudeCodePrompt(
 ## 프로젝트 컨텍스트
 - **목적**: ${form.purpose}
 ${form.notes ? `- **메모**: ${form.notes}` : ""}
-${refLines ? `\n## 참고 링크\n${refLines}` : ""}
-${form.instructions ? `\n## 상세 지침서 / 명령 프롬프트\n${form.instructions}` : ""}
-
+${refs ? `\n## 참고 링크\n${refs}` : ""}
+${requirementsBlock}
 ## 분석 요약
 ${analysis.purpose_summary}
 
@@ -86,6 +170,7 @@ ${analysis.agent_teams.map((t) => `- \`${t}\``).join("\n")}
 - 각 단계 완료 후 반드시 확인 요청
 - 테스트 없는 프로덕션 코드 작성 금지
 - any/unknown 타입 사용 금지
+${fullInstructions}
 `;
 }
 
@@ -96,6 +181,12 @@ function buildCodexChecklist(
   fw: string
 ): string[] {
   const list = [...analysis.codex_items];
+  const parsed = parseInstructions(form.instructions);
+
+  // 지침서의 구체적 작업 항목을 체크리스트에 포함
+  if (parsed.rawTasks.length > 0) {
+    list.push(...parsed.rawTasks.slice(0, 6).map((t) => `[지침서] ${t}`));
+  }
 
   if (fw.includes("Superpowers")) {
     list.push("finishing-a-development-branch 실행 완료");
@@ -122,6 +213,7 @@ function buildHandoffPrompt(
   fw: string
 ): string {
   const date = new Date().toLocaleDateString("ko-KR");
+  const parsed = parseInstructions(form.instructions);
 
   const nextCmd =
     fw === "GSD"
@@ -131,6 +223,12 @@ function buildHandoffPrompt(
       : fw === "Superpowers"
       ? "writing-plans 스킬로 태스크 분해 재개"
       : "/gsd-next 또는 brainstorming 재개";
+
+  // 미완료 지침서 항목
+  const pendingTasks =
+    parsed.rawTasks.length > 0
+      ? `\n## 미완료 지침서 항목\n${parsed.rawTasks.slice(0, 10).map((t) => `- [ ] ${t}`).join("\n")}`
+      : "";
 
   return `# ${form.title} — Handoff 프롬프트
 > 세션 날짜: ${date}
@@ -148,16 +246,14 @@ function buildHandoffPrompt(
 \`\`\`
 ${nextCmd}
 \`\`\`
-
-## 미완료 확인사항
-${analysis.precautions.map((p) => `- [ ] ${p}`).join("\n")}
+${pendingTasks}
 
 ## 컨텍스트 유지 핵심
 - 프레임워크: ${fw}
 - 목적: ${form.purpose}
 ${form.notes ? `- 메모: ${form.notes}` : ""}
-${form.references ? `\n## 참고 링크\n${form.references.split("\n").filter(Boolean).map((r) => `- ${r.trim()}`).join("\n")}` : ""}
-${form.instructions ? `\n## 상세 지침서\n${form.instructions}` : ""}
+${form.references ? `\n## 참고 링크\n${formatRefs(form.references)}` : ""}
+${form.instructions ? `\n## 원본 지침서\n${form.instructions.slice(0, 2000)}${form.instructions.length > 2000 ? "\n...(이하 생략)" : ""}` : ""}
 `;
 }
 
@@ -168,6 +264,14 @@ function buildLLMWiki(
   fw: string
 ): string {
   const date = new Date().toLocaleDateString("ko-KR");
+  const parsed = parseInstructions(form.instructions);
+
+  const requirementsSection =
+    parsed.rawTasks.length > 0
+      ? `\n## 요구사항 목록\n${parsed.rawTasks.slice(0, 10).map((t, i) => `${i + 1}. ${t}`).join("\n")}`
+      : parsed.freeText
+      ? `\n## 프로젝트 설명\n${parsed.freeText}`
+      : "";
 
   return `# LLM Wiki — ${form.title}
 
@@ -177,6 +281,8 @@ function buildLLMWiki(
 | 프로젝트 | ${form.title} |
 | 착수일 | ${date} |
 | 목적 | ${form.purpose} |
+| 규모 | 지침서 ${form.instructions.length}자, 요구사항 ${parsed.rawTasks.length}개 |
+${requirementsSection}
 
 ## 선정 프레임워크
 **${fw}**
@@ -207,8 +313,7 @@ ${analysis.precautions.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 ## 목적
 ${form.purpose}
 ${form.notes ? `\n## 메모\n${form.notes}` : ""}
-${form.references ? `\n## 참고 링크\n${form.references.split("\n").filter(Boolean).map((r) => `- ${r.trim()}`).join("\n")}` : ""}
-${form.instructions ? `\n## 상세 지침서\n${form.instructions.slice(0, 500)}${form.instructions.length > 500 ? "\n...(전체 내용은 착수 프롬프트 참조)" : ""}` : ""}
+${form.references ? `\n## 참고 링크\n${formatRefs(form.references)}` : ""}
 `;
 }
 
